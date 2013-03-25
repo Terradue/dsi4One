@@ -63,19 +63,43 @@
 						<mapping>
 							<configuration>noreplace</configuration>
 							<directoryIncluded>true</directoryIncluded>
-							<directory>/etc/one/vmm_dsi</directory>
+							<directory>/etc/one</directory>
 							<filemode>644</filemode>
 							<sources>
 								<source>
 									<filter>true</filter>
-									<location>${basedir}/src/main/resources/config/vmm_dsi</location>
+									<location>${basedir}/src/main/resources/config/vmm_dsi/dsirc</location>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<configuration>noreplace</configuration>
+							<directoryIncluded>true</directoryIncluded>
+							<directory>/etc/one/vmm_exec</directory>
+							<filemode>644</filemode>
+							<sources>
+								<source>
+									<filter>true</filter>
+									<location>${basedir}/src/main/resources/config/vmm_dsi/vmm_exec_dsi.conf</location>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<configuration>noreplace</configuration>
+							<directoryIncluded>true</directoryIncluded>
+							<directory>/etc/one/vmm_exec</directory>
+							<filemode>644</filemode>
+							<sources>
+								<source>
+									<filter>true</filter>
+									<location>${basedir}/src/main/resources/config/vmm_dsi/vmm_execrc</location>
 								</source>
 							</sources>
 						</mapping>
 						<mapping>
 							<configuration>false</configuration>
 							<directoryIncluded>false</directoryIncluded>
-							<directory>/usr/lib/one/mads/</directory>
+							<directory>/var/lib/one/remotes/vmm/dsi</directory>
 							<filemode>755</filemode>
 							<sources>
 								<source>
