@@ -11,13 +11,6 @@
 	<version>0.1-SNAPSHOT</version>
 	<packaging>rpm</packaging>
 	<name>T-Systems DSI driver for Opennebula</name>
-	<dependencies>
-		<dependency>
-			<artifactId>dsi-tools</artifactId>
-			<groupId>com.terradue</groupId>
-			<version>0.4-SNAPSHOTS</version>
-		</dependency>
-	</dependencies>
 	
 	<build>
 		<filters>
