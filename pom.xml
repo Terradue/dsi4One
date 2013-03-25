@@ -1,0 +1,108 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<artifactId>t2-parent</artifactId>
+		<groupId>com.terradue</groupId>
+		<version>8</version>
+	</parent>
+	<groupId>com.terradue.air</groupId>
+	<artifactId>dsi4one</artifactId>
+	<version>0.1-SNAPSHOT</version>
+	<packaging>rpm</packaging>
+	<name>T-Systems DSI driver for Opennebula</name>
+	<dependencies>
+		<dependency>
+			<artifactId>dsi-tools</artifactId>
+			<groupId>com.terradue</groupId>
+			<version>0.4-SNAPSHOTS</version>
+		</dependency>
+	</dependencies>
+	
+	<build>
+		<filters>
+			<filter>${basedir}/src/main/filters/${site}.properties</filter>
+		</filters>
+		<resources>
+			<resource>
+				<directory>${basedir}/src/main/resources/scripts/install</directory>
+				<filtering>true</filtering>
+				<targetPath>${project.build.directory}/resources/scripts/install</targetPath>
+			</resource>
+		</resources>
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>rpm-maven-plugin</artifactId>
+				<version>2.1-alpha-2</version>
+				<extensions>true</extensions>
+				<configuration>
+					<copyright>2013, Terradue</copyright>
+					<distribution>Terradue 2013</distribution>
+					<group>air</group>
+					<packager>Terradue</packager>
+					<name>${project.artifactId}</name>
+					<defaultUsername>root</defaultUsername>
+					<defaultGroupname>root</defaultGroupname>
+					<filters>
+						<filter>${basedir}/src/main/filters/${site}.properties</filter>
+					</filters>
+					<mappings>
+						<mapping>
+							<configuration>noreplace</configuration>
+							<directoryIncluded>true</directoryIncluded>
+							<directory>/etc/one/im_dsi</directory>
+							<filemode>644</filemode>
+							<sources>
+								<source>
+									<filter>true</filter>
+									<location>${basedir}/src/main/resources/config/im_dsi</location>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<configuration>noreplace</configuration>
+							<directoryIncluded>true</directoryIncluded>
+							<directory>/etc/one/vmm_dsi</directory>
+							<filemode>644</filemode>
+							<sources>
+								<source>
+									<filter>true</filter>
+									<location>${basedir}/src/main/resources/config/vmm_dsi</location>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<configuration>false</configuration>
+							<directoryIncluded>false</directoryIncluded>
+							<directory>/usr/lib/one/mads/</directory>
+							<filemode>755</filemode>
+							<sources>
+								<source>
+									<location>${basedir}/src/main/ruby/vmm_mad</location>
+								</source>
+							</sources>
+							<sources>
+								<source>
+									<location>${basedir}/src/main/ruby/im_mad</location>
+								</source>
+							</sources>
+						</mapping>
+					</mappings>
+					<provides>
+						<provide>${project.artifactId}</provide>
+					</provides>
+					<requires>
+						<require>opennebula &gt;= 3.8</require>
+					</requires>
+<!-- 					<postinstallScriptlet> -->
+<!-- 						<scriptFile>${basedir}/target/resources/scripts/install/postinstall.sh</scriptFile> -->
+<!-- 						<fileEncoding>utf-8</fileEncoding> -->
+<!-- 					</postinstallScriptlet> -->
+					<needarch>noarch</needarch>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+	
+</project>
