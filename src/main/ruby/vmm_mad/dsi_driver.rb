@@ -19,6 +19,7 @@ require 'yaml'
 require "CommandManager"
 require "rexml/document"
 require "VirtualMachineDriver"
+require 'fileutils'
 
 class DSIDriver < VirtualMachineDriver
     # -------------------------------------------------------------------------#
@@ -26,6 +27,7 @@ class DSIDriver < VirtualMachineDriver
     # -------------------------------------------------------------------------#
     ONE_LOCATION = ENV["ONE_LOCATION"]
     DSI_LOCATION = ENV["DSI_TOOLS_HOME"]
+    DSI_ONE_CONTEXT_LOCATION = ENV["DSI_ONE_CONTEXT_LOCATION"]
 
     if !ONE_LOCATION
        BIN_LOCATION = "/usr/bin" 
@@ -82,7 +84,8 @@ class DSIDriver < VirtualMachineDriver
     	# Extract informations from xml template
     	xml = File.new(dfile, "r").read
     	doc = REXML::Document.new xml    	  
-    	  
+    	
+    	# Deployment parameters  
     	cpu         = doc.elements["TEMPLATE/CPU"].text
     	memory      = doc.elements["TEMPLATE/MEMORY"].text
     	perf        = doc.elements["TEMPLATE/DSI/PERF"].text
@@ -92,7 +95,10 @@ class DSIDriver < VirtualMachineDriver
     	end_date    = doc.elements["TEMPLATE/DSI/END_DATE"].text
     	delegate    = doc.elements["TEMPLATE/DSI/DELEGATE_ROLE_ID"].text
         users       = doc.elements["TEMPLATE/DSI/USERS_ID"].text
-        name        = "#{one_id}-#{time.year}#{time.month}#{time.day}#{time.hour}#{time.min}"    	 
+        name        = "#{one_id}-#{time.year}#{time.month}#{time.day}#{time.hour}#{time.min}"
+        
+        # Contextualization parameters
+        @files      = doc.elements["TEMPLATE/DSI/FILES"].text   	 
        
         # Construct the command parameters
         auth_params       = "-u #{@user} -p #{@pass} --delegate-role #{delegate} --users #{users}"
@@ -179,7 +185,7 @@ class DSIDriver < VirtualMachineDriver
         auth_params = "-u #{@user} -p #{@pass}"
         
         # Set the fields of interests 
-        fields = "state,internalIpAddress,externalIpAddress"
+        fields = "state,externalIpAddress,internalIpAddress"
                
         # Start the monitoring
         rc, info = do_action(DSI_TOOLS + "dsi-describe-deployments" + " " + auth_params + " " + deploy_id + " --fields " + fields)
@@ -187,7 +193,7 @@ class DSIDriver < VirtualMachineDriver
         return "STATE=#{VM_STATE[:deleted]}" if rc == false
 
 		# Extract informations from describe-deployments response        
-        regex = /\[INFO\]\s\|\s(\w*)\s*\|\|\s(\w*)\s*\|\|\s(\w*)/
+        regex = /\[INFO\]\s\|\s(\w*)\s*\|\|\s(\w*.\w*.\w*.\w*)\s*\|\|\s(\w*.\w*.\w*.\w*)/
         
         OpenNebula.log_debug("info: #{info}")
         
@@ -195,7 +201,7 @@ class DSIDriver < VirtualMachineDriver
         state = tmp[1]
                         
         case state
-            when "running","blocked","shutdown"
+            when "RUNNING"
                 state_short = VM_STATE[:active]
             when "paused"
                 state_short = VM_STATE[:paused]
@@ -205,7 +211,16 @@ class DSIDriver < VirtualMachineDriver
         
         external_ip_addr = (tmp[2] != "null" && tmp[2]) || '-'
         internal_ip_addr = (tmp[3] != "null" && tmp[3]) || '-'
+        
+        # If the Deployment has the internal IP, it is running and can download the context
+        if internal_ip_addr != '-'
             
+            deployment_id = 'sb-dsi-' + internal_ip_addr.gsub(".", "-")
+            deployment_dir = DSI_ONE_CONTEXT_LOCATION + '/' +deployment_id
+            
+            prepare_context(deployment_id) unless File.directory?(deployment_dir) 
+        end
+                    
         info = "STATE=#{state_short} EXTERNAL_IP=#{external_ip_addr} INTERNAL_IP=#{internal_ip_addr}"
     end
 
@@ -236,7 +251,7 @@ class DSIDriver < VirtualMachineDriver
     # ------------------------------------------------------------------------ #
     def shutdown(deploy_id)
     
-        OpenNebula.log_debug("Action not implemented.")
+        cancel(deploy_id)
     end
 
     # ######################################################################## #
@@ -256,6 +271,36 @@ class DSIDriver < VirtualMachineDriver
             OpenNebula.log_error(err) if log
             return [false, rc.code]
         end
+    end
+    
+    # Prepare a context for the Deployment
+    def prepare_context(deployment_id)
+        
+        # TODO: remove the following
+        #@files = '/var/lib/va/users/certs/crossi.pub /usr/lib/va/context/common/common_va.sh /usr/lib/va/context/data-node/init.sh /usr/lib/va/context/repo/t2-stable.repo /usr/lib/va/context/repo/epel-el5.repo /usr/lib/va/context/repo/epel-el6.repo'
+        
+        # List of contextualization files
+        files = @files.split(" ")               
+                            
+        # Creating context dir
+        context_dir = 'context' 
+        dest = DSI_ONE_CONTEXT_LOCATION + '/' + deployment_id + '/' + context_dir 
+        FileUtils.mkdir_p dest
+        
+        # Copying context file
+        files.each do |file|
+            FileUtils.cp file, dest
+        end
+        
+        # Creating tarball
+        tar_file = 'context.tar.gz'  
+        tar_dir = DSI_ONE_CONTEXT_LOCATION + '/' + deployment_id        
+        rc, info = do_action("cd #{tar_dir}; tar -cf #{tar_file} #{context_dir}")            
+    end
+    
+    # Remove the context when unnecessary
+    def remove_context(deployment_id)
+        # TODO
     end
 
 end

@@ -1,3 +1,4 @@
-# DSI Driver environment variables
+# DSI Tools Driver environment variables
 JAVA_HOME=${JAVA_HOME}
 DSI_TOOLS_HOME=${DSI_TOOLS_HOME}
+DSI_ONE_CONTEXT_LOCATION=${DSI_ONE_CONTEXT_LOCATION}
