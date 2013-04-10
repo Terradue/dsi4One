@@ -92,6 +92,17 @@
 						<mapping>
 							<configuration>false</configuration>
 							<directoryIncluded>false</directoryIncluded>
+							<directory>/etc/one/im_dsi</directory>
+							<filemode>644</filemode>
+							<sources>
+								<source>
+									<location>${basedir}/src/main/resources/config/im_dsi</location>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<configuration>false</configuration>
+							<directoryIncluded>false</directoryIncluded>
 							<directory>/var/lib/one/remotes/vmm/dsi/</directory>
 							<filemode>755</filemode>
 							<sources>
@@ -103,7 +114,7 @@
 						<mapping>
 							<configuration>false</configuration>
 							<directoryIncluded>false</directoryIncluded>
-							<directory>/usr/lib/one/mads/</directory>
+							<directory>/usr/lib/one/mads</directory>
 							<filemode>755</filemode>
 							<sources>
 								<source>

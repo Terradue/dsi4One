@@ -97,7 +97,7 @@ class DSIDriver < VirtualMachineDriver
         users       = doc.elements["TEMPLATE/DSI/USERS_ID"].text
         name        = "#{one_id}-#{time.year}#{time.month}#{time.day}#{time.hour}#{time.min}"
         
-        # Contextualization parameters
+        # Contextualization files
         @files      = doc.elements["TEMPLATE/DSI/FILES"].text   	 
        
         # Construct the command parameters
@@ -203,8 +203,6 @@ class DSIDriver < VirtualMachineDriver
         case state
             when "RUNNING"
                 state_short = VM_STATE[:active]
-            when "paused"
-                state_short = VM_STATE[:paused]
             else
                 state_short = VM_STATE[:unknown]
         end
@@ -275,10 +273,7 @@ class DSIDriver < VirtualMachineDriver
     
     # Prepare a context for the Deployment
     def prepare_context(deployment_id)
-        
-        # TODO: remove the following
-        #@files = '/var/lib/va/users/certs/crossi.pub /usr/lib/va/context/common/common_va.sh /usr/lib/va/context/data-node/init.sh /usr/lib/va/context/repo/t2-stable.repo /usr/lib/va/context/repo/epel-el5.repo /usr/lib/va/context/repo/epel-el6.repo'
-        
+                        
         # List of contextualization files
         files = @files.split(" ")               
                             
