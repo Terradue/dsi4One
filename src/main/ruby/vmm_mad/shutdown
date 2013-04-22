@@ -44,11 +44,14 @@ dsi_drv = DSIDriver.new(host)
 dsi_drv.shutdown(deploy_id)
 
 count=0
-while (dsi_drv.poll(deploy_id).match(/STATE=(.*)/)[1] != "d") do
+
+regex = /STATE=(.*?)\sINTERNAL_IP=(.*?)\sEXTERNAL_IP=(.*?)/
+
+while (dsi_drv.poll(deploy_id).match(regex)[1] != 's') do
 	sleep POLL_INTERVAL
 	if count > TIMEOUT then
 	    OpenNebula.log_debug("Timeout reached and VM #{deploy_id} is still alive.")
 		exit -1
 	end
-	count+=POLL_INTERVAL
+	count+=POLL_INTERVAL	
 end

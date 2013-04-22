@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------- #
-# Copyright 2010-2013, C12G Labs S.L                                           #
+# Copyright 2013, Terradue S.r.l.                                              #
 #                                                                              #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may      #
 # not use this file except in compliance with the License. You may obtain      #
@@ -28,6 +28,7 @@ class DSIDriver < VirtualMachineDriver
     ONE_LOCATION = ENV["ONE_LOCATION"]
     DSI_LOCATION = ENV["DSI_TOOLS_HOME"]
     DSI_ONE_CONTEXT_LOCATION = ENV["DSI_ONE_CONTEXT_LOCATION"]
+    POLL_INTERVAL=5
 
     if !ONE_LOCATION
        BIN_LOCATION = "/usr/bin" 
@@ -46,9 +47,6 @@ class DSIDriver < VirtualMachineDriver
     DSI_TOOLS = DSI_LOCATION + "/bin/"
 
     ENV['LANG'] = 'C'
-
-    SHUTDOWN_INTERVAL = 5
-    SHUTDOWN_TIMEOUT  = 500
 
     def initialize(host)
       
@@ -74,12 +72,11 @@ class DSIDriver < VirtualMachineDriver
     # ######################################################################## #
 
     # ------------------------------------------------------------------------ #
-    # Deploy & define a VM based on its description file                       #
+    # Deploy and define a VM                                                   #
     # ------------------------------------------------------------------------ #
     def deploy(dfile, id)
     	
         one_id = "one-#{id}"
-        time = Time.now
         
     	# Extract informations from xml template
     	xml = File.new(dfile, "r").read
@@ -95,10 +92,10 @@ class DSIDriver < VirtualMachineDriver
     	end_date    = doc.elements["TEMPLATE/DSI/END_DATE"].text
     	delegate    = doc.elements["TEMPLATE/DSI/DELEGATE_ROLE_ID"].text
         users       = doc.elements["TEMPLATE/DSI/USERS_ID"].text
-        name        = "#{one_id}-#{time.year}#{time.month}#{time.day}#{time.hour}#{time.min}"
+        name        = one_id
         
         # Contextualization files
-        @files      = doc.elements["TEMPLATE/DSI/FILES"].text   	 
+        @files      = doc.elements["TEMPLATE/DSI/FILES"].text 	 
        
         # Construct the command parameters
         auth_params       = "-u #{@user} -p #{@pass} --delegate-role #{delegate} --users #{users}"
@@ -117,10 +114,36 @@ class DSIDriver < VirtualMachineDriver
         
         # Extract the Deployment id from DSI response        
         regex = /\[INFO\]\sDeployment\screated\swith\sid:\s(\d{1,})/
-        deploy_id = info.match(regex)[1]
-               
-        OpenNebula.log_debug("Successfully created DSI deployment (name: #{one_id}, deploy id:#{deploy_id})")
+        deploy_id = info.match(regex)[1]              
+        
+        # Poll the DSI Provider until the deployment is ready
+        regex = /STATE=(.*?)\sINTERNAL_IP=(.*?)\sEXTERNAL_IP=(.*?)/
+        regex_ip = /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/
+         
+        begin
+            
+            sleep(POLL_INTERVAL)
+            
+            state_short = VM_STATE[:unknown]
+            internal_ip = '-'
+            
+            info = poll(deploy_id)            
+            tmp = info.match(regex)
+            
+            if tmp
+                state_short = tmp[1]
+                internal_ip = tmp[2]
+            end           
+        # --> wait until the deployment is active AND the internal IP is present                            
+        end while ( state_short != VM_STATE[:active] ) || !internal_ip.match(regex_ip) 
+                        
+        # Prepare contextualization 
+        deployment_id = internal_ip.gsub(".", "-")
+        deployment_dir = DSI_ONE_CONTEXT_LOCATION + '/' + deployment_id
+        prepare_context(deployment_id) unless File.directory?(deployment_dir)
 
+        OpenNebula.log_debug("Successfully created DSI deployment (name: #{one_id}, deploy id:#{deploy_id})")
+        
         return deploy_id
     end
 
@@ -132,7 +155,7 @@ class DSIDriver < VirtualMachineDriver
         auth_params = "-u #{@user} -p #{@pass}"
         
         # Destroy the VM
-        rc, info = do_action(DSI_TOOLS + "dsi-stop-deployments" + " " + auth_params + " " + deploy_id) 
+        rc, info = do_action(DSI_TOOLS + "dsi-stop-deployments" + " " + auth_params + " " + deploy_id)
 
         exit info if rc == false
 
@@ -185,41 +208,39 @@ class DSIDriver < VirtualMachineDriver
         auth_params = "-u #{@user} -p #{@pass}"
         
         # Set the fields of interests 
-        fields = "state,externalIpAddress,internalIpAddress"
+        fields = "state,internalIpAddress,externalIpAddress"
                
         # Start the monitoring
         rc, info = do_action(DSI_TOOLS + "dsi-describe-deployments" + " " + auth_params + " " + deploy_id + " --fields " + fields)
 
         return "STATE=#{VM_STATE[:deleted]}" if rc == false
 
-		# Extract informations from describe-deployments response        
-        regex = /\[INFO\]\s\|\s(\w*)\s*\|\|\s(\w*.\w*.\w*.\w*)\s*\|\|\s(\w*.\w*.\w*.\w*)/
+		# Extract informations from dsi-describe-deployments response        
+        regex = /\[INFO\]\s\|(.*?)\|\|(.*?)\|\|(.*?)\|/       
         
-        OpenNebula.log_debug("info: #{info}")
+        state = '-'
+        internal_ip_addr = '-'
+        external_ip_addr = '-'
         
         tmp = info.match(regex)
-        state = tmp[1]
+        
+        if tmp
+            state = tmp[1].strip
+            internal_ip_addr = tmp[2].strip
+            external_ip_addr = tmp[3].strip
+        end
                         
         case state
             when "RUNNING"
                 state_short = VM_STATE[:active]
+            when "STOPPED"
+                state_short = 's'
             else
                 state_short = VM_STATE[:unknown]
-        end
-        
-        external_ip_addr = (tmp[2] != "null" && tmp[2]) || '-'
-        internal_ip_addr = (tmp[3] != "null" && tmp[3]) || '-'
-        
-        # If the Deployment has the internal IP, it is running and can download the context
-        if internal_ip_addr != '-'
-            
-            deployment_id = 'sb-dsi-' + internal_ip_addr.gsub(".", "-")
-            deployment_dir = DSI_ONE_CONTEXT_LOCATION + '/' +deployment_id
-            
-            prepare_context(deployment_id) unless File.directory?(deployment_dir) 
-        end
-                    
-        info = "STATE=#{state_short} EXTERNAL_IP=#{external_ip_addr} INTERNAL_IP=#{internal_ip_addr}"
+        end  
+                   
+        info = "STATE=#{state_short} INTERNAL_IP=#{internal_ip_addr} EXTERNAL_IP=#{external_ip_addr}"
+     
     end
 
     # ------------------------------------------------------------------------ #
@@ -249,7 +270,14 @@ class DSIDriver < VirtualMachineDriver
     # ------------------------------------------------------------------------ #
     def shutdown(deploy_id)
     
-        cancel(deploy_id)
+        auth_params = "-u #{@user} -p #{@pass}"
+                
+        # Destroy the VM
+        rc, info = do_action(DSI_TOOLS + "dsi-stop-deployments" + " " + auth_params + " " + deploy_id)
+        
+        exit info if rc == false
+        
+        OpenNebula.log_debug("Successfully shutdown deployment #{deploy_id}.")
     end
 
     # ######################################################################## #
@@ -287,10 +315,13 @@ class DSIDriver < VirtualMachineDriver
             FileUtils.cp file, dest
         end
         
+        # Create context.sh (environment variables)
+        # TODO
+        
         # Creating tarball
-        tar_file = 'context.tar.gz'  
+        tar_file = 'context.tgz'  
         tar_dir = DSI_ONE_CONTEXT_LOCATION + '/' + deployment_id        
-        rc, info = do_action("cd #{tar_dir}; tar -cf #{tar_file} #{context_dir}")            
+        rc, info = do_action("cd #{tar_dir}; tar -cvzf #{tar_file} #{context_dir}")            
     end
     
     # Remove the context when unnecessary
