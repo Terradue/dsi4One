@@ -10,6 +10,11 @@
 	<artifactId>dsi4one</artifactId>
 	<version>0.1-SNAPSHOT</version>
 	<packaging>rpm</packaging>
+	
+	<properties>
+		<site>default</site>
+	</properties>
+	
 	<name>T-Systems DSI driver for Opennebula</name>
 	
 	<build>
