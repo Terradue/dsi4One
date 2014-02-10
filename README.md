@@ -162,4 +162,5 @@ Start the VM either via the Sunstone GUI or via the following command:
 
 ## References
 
-* dsi: http://dsi.apache.org/
+* T-Systems: http://www.t-systems.com
+* dsi-tools: https://github.com/Terradue/dsi-tools
