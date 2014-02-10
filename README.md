@@ -2,7 +2,7 @@
 
 ## Description
 
-The dsi4one driver is an OpenNebula add-on that provides a way to access the [T-Systems DSI](<http://www.t-systems.com/solutions/dynamic-services-for-infrastructure-computing-power-at-the-push-of-a-button/998132>) Cloud provider. 
+The dsi4one driver is an OpenNebula add-on that provides a way to use the [T-Systems DSI](<http://www.t-systems.com/solutions/dynamic-services-for-infrastructure-computing-power-at-the-push-of-a-button/998132>) Cloud provider from the OpenNebula cloud controller. 
 This work has been co-funded by the [European Space Agency (ESA)](<http://www.esa.int/ESA>). 
 
 ## Development
@@ -142,15 +142,17 @@ Prepare a template suitable for the dsi Driver, named for example 'dsi', using e
     CONTEXT=[
         FILES=""
     ]
-    dsi=[
-        GROUP="default",
-        HARDWAREID="t1.micro",
-        LOCATIONID="us-east-1d"
-    ]
-    
- 
+    DSI=[
+        DELEGATE_ROLE_ID="1",
+        DESCRIPTION="test",
+        END_DATE="2014-05-31T00:00:00CET",
+        IMAGE_ID="513",
+        NETWORK_ID="22",
+        PERF="1",
+        USERS_ID="280" ]
+        
     $ onetemplate create dsi.txt
-    ID: 2
+    ID: 1
 
 Note. The contextualisation section (CONTEXT) is optional. 
 
@@ -158,7 +160,7 @@ Note. The contextualisation section (CONTEXT) is optional.
 
 Start the VM either via the Sunstone GUI or via the following command:
 
-    $ onetemplate instantiate 2 
+    $ onetemplate instantiate 1
 
 ## References
 
